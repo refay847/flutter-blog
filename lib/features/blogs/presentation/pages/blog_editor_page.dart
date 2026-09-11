@@ -1,19 +1,25 @@
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../providers/blog_providers.dart';
 
 class BlogEditorPage extends ConsumerStatefulWidget {
   final int? id;
   final String? initialName;
   final String? initialDescription;
+  final String? initialImage;
 
   const BlogEditorPage({
     super.key,
     this.id,
     this.initialName,
     this.initialDescription,
+    this.initialImage,
   });
 
   @override
@@ -34,11 +40,11 @@ class _BlogEditorPageState
     super.initState();
 
     name = TextEditingController(
-      text: widget.initialName,
+      text: widget.initialName ?? '',
     );
 
     description = TextEditingController(
-      text: widget.initialDescription,
+      text: widget.initialDescription ?? '',
     );
   }
 
@@ -56,17 +62,29 @@ class _BlogEditorPageState
     );
 
     if (selected != null) {
-      setState(() => image = selected);
+      setState(() {
+        image = selected;
+      });
     }
   }
 
   Future<void> save() async {
     if (name.text.trim().isEmpty ||
         description.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Title and story are required.',
+          ),
+        ),
+      );
+
       return;
     }
 
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+    });
 
     try {
       if (widget.id == null) {
@@ -90,27 +108,34 @@ class _BlogEditorPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(
+            content: Text(e.toString()),
+          ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => loading = false);
+        setState(() {
+          loading = false;
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.id != null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.id == null ? 'Write a story' : 'Edit story',
+          isEditing ? 'Edit story' : 'Write a story',
           style: const TextStyle(
             fontWeight: FontWeight.w800,
           ),
         ),
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(22),
         children: [
@@ -118,7 +143,9 @@ class _BlogEditorPageState
             controller: name,
             decoration: const InputDecoration(
               labelText: 'Title',
-              prefixIcon: Icon(Icons.title_rounded),
+              prefixIcon: Icon(
+                Icons.title_rounded,
+              ),
             ),
           ),
 
@@ -131,8 +158,12 @@ class _BlogEditorPageState
               labelText: 'Story',
               alignLabelWithHint: true,
               prefixIcon: Padding(
-                padding: EdgeInsets.only(bottom: 130),
-                child: Icon(Icons.subject_rounded),
+                padding: EdgeInsets.only(
+                  bottom: 130,
+                ),
+                child: Icon(
+                  Icons.subject_rounded,
+                ),
               ),
             ),
           ),
@@ -143,7 +174,7 @@ class _BlogEditorPageState
             onTap: pick,
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              height: 120,
+              height: 180,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -151,24 +182,66 @@ class _BlogEditorPageState
                   color: Colors.black12,
                 ),
               ),
-              child: Center(
-                child: image == null
-                    ? const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate_outlined,
-                            size: 32,
+              clipBehavior: Clip.antiAlias,
+
+              child: image != null
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(
+                          File(image!.path),
+                          fit: BoxFit.cover,
+                        ),
+
+                        const Positioned(
+                          right: 12,
+                          top: 12,
+                          child: CircleAvatar(
+                            child: Icon(
+                              Icons.edit,
+                            ),
                           ),
-                          SizedBox(height: 8),
-                          Text('Add a cover image'),
-                        ],
-                      )
-                    : Text(
-                        image!.name,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-              ),
+                        ),
+                      ],
+                    )
+                  : widget.initialImage != null
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl:
+                                  '${AppConstants.storageBaseUrl}${widget.initialImage}',
+                              fit: BoxFit.cover,
+                            ),
+
+                            const Positioned(
+                              right: 12,
+                              top: 12,
+                              child: CircleAvatar(
+                                child: Icon(
+                                  Icons.edit,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Column(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons
+                                  .add_photo_alternate_outlined,
+                              size: 32,
+                            ),
+
+                            SizedBox(height: 8),
+
+                            Text(
+                              'Add a cover image',
+                            ),
+                          ],
+                        ),
             ),
           ),
 
@@ -185,9 +258,9 @@ class _BlogEditorPageState
                       child: CircularProgressIndicator(),
                     )
                   : Text(
-                      widget.id == null
-                          ? 'Publish story'
-                          : 'Save changes',
+                      isEditing
+                          ? 'Save changes'
+                          : 'Publish story',
                     ),
             ),
           ),

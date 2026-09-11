@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/loading_view.dart';
@@ -27,20 +27,18 @@ class BlogFeedPage extends ConsumerWidget {
 
     Widget content = state.when(
       loading: () => const LoadingView(),
+
       error: (error, _) => ErrorView(
         message: error.toString(),
         onRetry: () {
-          ref
-              .read(blogsProvider.notifier)
-              .refreshBlogs();
+          ref.read(blogsProvider.notifier).refreshBlogs();
         },
       ),
+
       data: (blogs) {
         return RefreshIndicator(
           onRefresh: () {
-            return ref
-                .read(blogsProvider.notifier)
-                .refreshBlogs();
+            return ref.read(blogsProvider.notifier).refreshBlogs();
           },
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(
@@ -76,7 +74,7 @@ class BlogFeedPage extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
@@ -85,15 +83,15 @@ class BlogFeedPage extends ConsumerWidget {
             ),
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Write'),
+        child: const Icon(Icons.add),
       ),
+
       body: content,
     );
   }
 }
 
-class _BlogCard extends StatelessWidget {
+class _BlogCard extends ConsumerWidget {
   final Blog blog;
 
   const _BlogCard({
@@ -101,9 +99,16 @@ class _BlogCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+    WidgetRef ref,
+  ) {
+    final currentUser = ref.watch(authStateProvider).value;
+
+    final isMine = currentUser?.id == blog.userId;
     return InkWell(
       borderRadius: BorderRadius.circular(24),
+
       onTap: () {
         Navigator.push(
           context,
@@ -114,11 +119,12 @@ class _BlogCard extends StatelessWidget {
           ),
         );
       },
+
       child: Card(
         clipBehavior: Clip.antiAlias,
+
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (blog.img != null)
               SizedBox(
@@ -128,6 +134,7 @@ class _BlogCard extends StatelessWidget {
                   imageUrl:
                       '${AppConstants.storageBaseUrl}${blog.img}',
                   fit: BoxFit.cover,
+
                   errorWidget: (
                     context,
                     url,
@@ -146,9 +153,10 @@ class _BlogCard extends StatelessWidget {
 
             Padding(
               padding: const EdgeInsets.all(18),
+
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+
                 children: [
                   Text(
                     blog.name,
@@ -178,27 +186,66 @@ class _BlogCard extends StatelessWidget {
                         radius: 15,
                         child: Text(
                           blog.authorName.isNotEmpty
-                              ? blog.authorName[0]
-                                  .toUpperCase()
+                              ? blog.authorName[0].toUpperCase()
                               : 'U',
                         ),
                       ),
 
                       const SizedBox(width: 8),
 
-                      Text(
-                        blog.authorName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          blog.authorName,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
 
-                      const Spacer(),
+                      // Only show edit/delete for the blog owner.
+                      if (isMine) ...[
+                        IconButton(
+                          tooltip: 'Edit',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BlogEditorPage(
+                                  id: blog.id,
+                                  initialName: blog.name,
+                                  initialDescription:
+                                      blog.description,
+                                  initialImage: blog.img,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            size: 20,
+                          ),
+                        ),
 
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 18,
-                      ),
+                        IconButton(
+                          tooltip: 'Delete',
+                          onPressed: () {
+                            _confirmDelete(
+                              context,
+                              ref,
+                              blog,
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                          ),
+                        ),
+                      ] else
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                        ),
                     ],
                   ),
                 ],
@@ -208,5 +255,66 @@ class _BlogCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    Blog blog,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete story?'),
+
+          content: const Text(
+            'This action cannot be undone.',
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(blogsProvider.notifier)
+          .deleteBlog(blog.id);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Story deleted'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+          ),
+        );
+      }
+    }
   }
 }
