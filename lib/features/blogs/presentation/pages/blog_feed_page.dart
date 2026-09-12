@@ -13,16 +13,10 @@ import 'blog_editor_page.dart';
 class BlogFeedPage extends ConsumerWidget {
   final bool embedded;
 
-  const BlogFeedPage({
-    super.key,
-    this.embedded = false,
-  });
+  const BlogFeedPage({super.key, this.embedded = false});
 
   @override
-  Widget build(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(blogsProvider);
 
     Widget content = state.when(
@@ -41,20 +35,13 @@ class BlogFeedPage extends ConsumerWidget {
             return ref.read(blogsProvider.notifier).refreshBlogs();
           },
           child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(
-              22,
-              14,
-              22,
-              100,
-            ),
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 100),
             itemCount: blogs.length,
             separatorBuilder: (_, index) {
               return const SizedBox(height: 14);
             },
             itemBuilder: (context, index) {
-              return _BlogCard(
-                blog: blogs[index],
-              );
+              return _BlogCard(blog: blogs[index]);
             },
           ),
         );
@@ -69,18 +56,14 @@ class BlogFeedPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(
           'Latest stories',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const BlogEditorPage(),
-            ),
+            MaterialPageRoute(builder: (_) => const BlogEditorPage()),
           );
         },
         child: const Icon(Icons.add),
@@ -94,28 +77,27 @@ class BlogFeedPage extends ConsumerWidget {
 class _BlogCard extends ConsumerWidget {
   final Blog blog;
 
-  const _BlogCard({
-    required this.blog,
-  });
+  const _BlogCard({required this.blog});
 
   @override
-  Widget build(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authStateProvider).value;
 
     final isMine = currentUser?.id == blog.userId;
+
     return InkWell(
       borderRadius: BorderRadius.circular(24),
 
       onTap: () {
+        if (currentUser == null) {
+          return;
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => BlogDetailPage(
-              blog: blog,
-            ),
+            builder: (_) =>
+                BlogDetailPage(blog: blog, currentUserId: currentUser.id),
           ),
         );
       },
@@ -131,21 +113,12 @@ class _BlogCard extends ConsumerWidget {
                 height: 190,
                 width: double.infinity,
                 child: CachedNetworkImage(
-                  imageUrl:
-                      '${AppConstants.storageBaseUrl}${blog.img}',
+                  imageUrl: '${AppConstants.storageBaseUrl}${blog.img}',
                   fit: BoxFit.cover,
-
-                  errorWidget: (
-                    context,
-                    url,
-                    error,
-                  ) {
+                  errorWidget: (context, url, error) {
                     return const ColoredBox(
                       color: Colors.black12,
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        size: 42,
-                      ),
+                      child: Icon(Icons.image_not_supported_outlined, size: 42),
                     );
                   },
                 ),
@@ -172,10 +145,49 @@ class _BlogCard extends ConsumerWidget {
                     blog.description,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.black54,
-                      height: 1.45,
-                    ),
+                    style: const TextStyle(color: Colors.black54, height: 1.45),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      Icon(
+                        blog.isLiked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        size: 19,
+                        color: blog.isLiked ? Colors.red : Colors.black54,
+                      ),
+
+                      const SizedBox(width: 5),
+
+                      Text(
+                        '${blog.likesCount}',
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 18,
+                        color: Colors.black54,
+                      ),
+
+                      const SizedBox(width: 5),
+
+                      Text(
+                        '${blog.commentsCount}',
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 14),
@@ -197,13 +209,10 @@ class _BlogCard extends ConsumerWidget {
                         child: Text(
                           blog.authorName,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
 
-                      // Only show edit/delete for the blog owner.
                       if (isMine) ...[
                         IconButton(
                           tooltip: 'Edit',
@@ -214,38 +223,24 @@ class _BlogCard extends ConsumerWidget {
                                 builder: (_) => BlogEditorPage(
                                   id: blog.id,
                                   initialName: blog.name,
-                                  initialDescription:
-                                      blog.description,
+                                  initialDescription: blog.description,
                                   initialImage: blog.img,
                                 ),
                               ),
                             );
                           },
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            size: 20,
-                          ),
+                          icon: const Icon(Icons.edit_outlined, size: 20),
                         ),
 
                         IconButton(
                           tooltip: 'Delete',
                           onPressed: () {
-                            _confirmDelete(
-                              context,
-                              ref,
-                              blog,
-                            );
+                            _confirmDelete(context, ref, blog);
                           },
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            size: 20,
-                          ),
+                          icon: const Icon(Icons.delete_outline, size: 20),
                         ),
                       ] else
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 18,
-                        ),
+                        const Icon(Icons.arrow_forward_rounded, size: 18),
                     ],
                   ),
                 ],
@@ -268,9 +263,7 @@ class _BlogCard extends ConsumerWidget {
         return AlertDialog(
           title: const Text('Delete story?'),
 
-          content: const Text(
-            'This action cannot be undone.',
-          ),
+          content: const Text('This action cannot be undone.'),
 
           actions: [
             TextButton(
@@ -296,24 +289,18 @@ class _BlogCard extends ConsumerWidget {
     }
 
     try {
-      await ref
-          .read(blogsProvider.notifier)
-          .deleteBlog(blog.id);
+      await ref.read(blogsProvider.notifier).deleteBlog(blog.id);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Story deleted'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Story deleted')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
