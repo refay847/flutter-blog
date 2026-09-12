@@ -9,8 +9,11 @@ import '../../domain/repositories/blog_repository.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 
 final blogRepositoryProvider = Provider<BlogRepository>(
-  (ref) =>
-      BlogRepositoryImpl(BlogRemoteDataSource(ref.watch(apiClientProvider))),
+  (ref) => BlogRepositoryImpl(
+    BlogRemoteDataSource(
+      ref.watch(apiClientProvider),
+    ),
+  ),
 );
 
 final blogsProvider = AsyncNotifierProvider<BlogsNotifier, List<Blog>>(
@@ -19,8 +22,11 @@ final blogsProvider = AsyncNotifierProvider<BlogsNotifier, List<Blog>>(
 
 class BlogsNotifier extends AsyncNotifier<List<Blog>> {
   @override
-  Future<List<Blog>> build() {
-    return ref.watch(blogRepositoryProvider).all();
+  Future<List<Blog>> build() async {
+    // Rebuild blogs whenever the logged-in user changes.
+    ref.watch(authStateProvider);
+
+    return ref.read(blogRepositoryProvider).all();
   }
 
   Future<void> refreshBlogs() async {
@@ -29,13 +35,28 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
     );
   }
 
-  Future<void> create(String name, String description, XFile? image) async {
+  // ============================================================
+  // CREATE
+  // ============================================================
+
+  Future<void> create(
+    String name,
+    String description,
+    XFile? image,
+  ) async {
     final blog = await ref
         .read(blogRepositoryProvider)
         .create(name, description, image);
 
-    state = AsyncData([blog, ...(state.value ?? <Blog>[])]);
+    state = AsyncData([
+      blog,
+      ...(state.value ?? <Blog>[]),
+    ]);
   }
+
+  // ============================================================
+  // UPDATE BLOG
+  // ============================================================
 
   Future<void> updateBlog(
     int id,
@@ -60,12 +81,18 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
     );
   }
 
+  // ============================================================
+  // DELETE BLOG
+  // ============================================================
+
   Future<void> deleteBlog(int id) async {
     await ref.read(blogRepositoryProvider).delete(id);
 
     final blogs = state.value ?? <Blog>[];
 
-    state = AsyncData(blogs.where((item) => item.id != id).toList());
+    state = AsyncData(
+      blogs.where((item) => item.id != id).toList(),
+    );
   }
 
   // ============================================================
@@ -83,11 +110,15 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
     final newCount = newLiked
         ? oldCount + 1
         : oldCount > 0
-        ? oldCount - 1
-        : 0;
+            ? oldCount - 1
+            : 0;
 
-    // Optimistic UI update.
-    _replaceBlog(blog.copyWith(isLiked: newLiked, likesCount: newCount));
+    _replaceBlog(
+      blog.copyWith(
+        isLiked: newLiked,
+        likesCount: newCount,
+      ),
+    );
 
     try {
       if (newLiked) {
@@ -96,8 +127,12 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
         await repository.unlike(blog.id);
       }
     } catch (e) {
-      // Roll back if API request failed.
-      _replaceBlog(blog.copyWith(isLiked: oldLiked, likesCount: oldCount));
+      _replaceBlog(
+        blog.copyWith(
+          isLiked: oldLiked,
+          likesCount: oldCount,
+        ),
+      );
 
       rethrow;
     }
@@ -107,7 +142,10 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
   // COMMENTS
   // ============================================================
 
-  Future<Comment> addComment(int blogId, String body) async {
+  Future<Comment> addComment(
+    int blogId,
+    String body,
+  ) async {
     final comment = await ref
         .read(blogRepositoryProvider)
         .addComment(blogId, body);
@@ -116,8 +154,6 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
 
     Blog? blog;
 
-    // IMPORTANT:
-    // Do not use firstWhere/orElse here.
     for (final item in blogs) {
       if (item.id == blogId) {
         blog = item;
@@ -126,7 +162,10 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
     }
 
     if (blog != null) {
-      final updatedComments = [...blog.comments, comment];
+      final updatedComments = [
+        ...blog.comments,
+        comment,
+      ];
 
       _replaceBlog(
         blog.copyWith(
@@ -139,7 +178,15 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
     return comment;
   }
 
-  Future<void> updateComment(int blogId, int commentId, String body) async {
+  // ============================================================
+  // UPDATE COMMENT
+  // ============================================================
+
+  Future<void> updateComment(
+    int blogId,
+    int commentId,
+    String body,
+  ) async {
     final repository = ref.read(blogRepositoryProvider);
 
     final updatedComment = await repository.updateComment(
@@ -167,21 +214,30 @@ class BlogsNotifier extends AsyncNotifier<List<Blog>> {
         return comment;
       }).toList();
 
-      return blog.copyWith(comments: updatedComments);
+      return blog.copyWith(
+        comments: updatedComments,
+      );
     }).toList();
 
     state = AsyncData(updatedBlogs);
   }
 
-  Future<void> deleteComment(int blogId, int commentId) async {
-    await ref.read(blogRepositoryProvider).deleteComment(blogId, commentId);
+  // ============================================================
+  // DELETE COMMENT
+  // ============================================================
+
+  Future<void> deleteComment(
+    int blogId,
+    int commentId,
+  ) async {
+    await ref
+        .read(blogRepositoryProvider)
+        .deleteComment(blogId, commentId);
 
     final blogs = state.value ?? <Blog>[];
 
     Blog? blog;
 
-    // IMPORTANT:
-    // Again, avoid firstWhere/orElse.
     for (final item in blogs) {
       if (item.id == blogId) {
         blog = item;
