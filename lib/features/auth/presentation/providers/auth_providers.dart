@@ -7,37 +7,28 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
-final tokenStorageProvider = Provider<TokenStorage>(
-  (ref) => TokenStorage(),
-);
+final tokenStorageProvider = Provider<TokenStorage>((ref) => TokenStorage());
 
 final apiClientProvider = Provider<ApiClient>(
-  (ref) => ApiClient(
-    ref.watch(tokenStorageProvider),
-  ),
+  (ref) => ApiClient(ref.watch(tokenStorageProvider)),
 );
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepositoryImpl(
-    AuthRemoteDataSource(
-      ref.watch(apiClientProvider),
-    ),
+    AuthRemoteDataSource(ref.watch(apiClientProvider)),
     ref.watch(tokenStorageProvider),
   ),
 );
 
 final authStateProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<User?>>(
-  (ref) => AuthNotifier(
-    ref.watch(authRepositoryProvider),
-  ),
-);
+      (ref) => AuthNotifier(ref.watch(authRepositoryProvider)),
+    );
 
 class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   final AuthRepository repo;
 
-  AuthNotifier(this.repo)
-      : super(const AsyncLoading()) {
+  AuthNotifier(this.repo) : super(const AsyncLoading()) {
     _restore();
   }
 
@@ -66,17 +57,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   // LOGIN
   // ============================================================
 
-  Future<String?> login(
-    String email,
-    String password,
-  ) async {
+  Future<String?> login(String email, String password) async {
     state = const AsyncLoading();
 
     try {
-      final result = await repo.login(
-        email,
-        password,
-      );
+      final result = await repo.login(email, password);
 
       state = AsyncData(result.$1);
 

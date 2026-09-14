@@ -8,6 +8,7 @@ class ApiClient {
   late final Dio dio;
 
   ApiClient(this.storage) {
+    // dio.get('blogs')  instead of dio.get('https://blog-2.wasmer.app/api/blogs')
     dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.apiBaseUrl,
@@ -47,19 +48,23 @@ class ApiClient {
       if (data is Map && data['errors'] is Map) {
         final errors = data['errors'] as Map;
         final first = errors.values.first;
-        if (first is List && first.isNotEmpty)
+        if (first is List && first.isNotEmpty){
           return AppException(first.first.toString());
+        }
       }
-      if (data is Map && data['message'] != null)
+      if (data is Map && data['message'] != null){
         return AppException(data['message'].toString());
+      }
       if (error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout) {
         return const AppException('The server took too long to respond.');
       }
-      if (error.type == DioExceptionType.connectionError)
+      if (error.type == DioExceptionType.connectionError){
         return const AppException('No internet connection.');
-      if (error.response?.statusCode == 401)
+      }
+      if (error.response?.statusCode == 401){
         return const AppException('Your session has expired.');
+      }
       return AppException(
         'Request failed (${error.response?.statusCode ?? 'network error'}).',
       );

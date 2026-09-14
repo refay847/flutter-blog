@@ -37,11 +37,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     }
 
     if (password.text != confirm.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
       return;
     }
 
@@ -61,9 +59,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     setState(() => loading = false);
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     } else {
       Navigator.pop(context);
     }
@@ -83,10 +81,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               children: [
                 const Text(
                   'Create your account',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
                 ),
 
                 const SizedBox(height: 8),

@@ -42,9 +42,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     setState(() => loading = false);
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
   }
 
@@ -80,20 +80,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                   const Text(
                     'Welcome back',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
                   ),
 
                   const SizedBox(height: 8),
 
                   const Text(
                     'Sign in to continue reading and publishing.',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.black54, fontSize: 16),
                   ),
 
                   const SizedBox(height: 34),
