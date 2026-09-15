@@ -17,9 +17,17 @@ class CommentModel extends Comment {
       userId: (json['user_id'] as num).toInt(),
       blogId: (json['blog_id'] as num).toInt(),
       body: json['body']?.toString() ?? '',
-      userName: user is Map
-          ? user['name']?.toString() ?? 'Unknown'
-          : 'Unknown',
+      userName: user is Map ? user['name']?.toString() ?? 'Unknown' : 'Unknown',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'blog_id': blogId,
+      'body': body,
+      'user': {'name': userName},
+    };
   }
 }
